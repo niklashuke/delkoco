@@ -1,4 +1,9 @@
 [physical]
-192.168.145.153
-192.168.145.155
+dockerhost1
+dockerhost2
+kubespray
 
+[kubernetes]
+dockerhost1
+dockerhost2
+kubespray

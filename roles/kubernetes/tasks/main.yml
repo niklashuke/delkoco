@@ -1,13 +1,22 @@
 ---
 
-- name: Ensure Pip is installed.
-  package: name=python-pip state=present
+- name: Install common packages
+  yum: name={{ item }} state=present
+  with_items:
+   - python-pip
 
-- name: Ensure pip_install_packages are installed.
-  pip:
-    name: "{{ item.name | default(item) }}"
-    version: "{{ item.version | default(omit) }}"
-    state: "{{ item.state | default(omit) }}"
-  with_items: "{{ pip_install_packages }}"
+# Install jinja2
+- pip:
+   name: jinja2
 
-pip_
+# Install kubespray
+- pip:
+   name: kubespray
+# Set ip forwarding on in /proc and in the sysctl file and reload if necessary
+- sysctl:
+    name: net.ipv4.ip_forward
+    value: 1
+    sysctl_set: yes
+    state: present
+    reload: yes
+
