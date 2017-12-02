@@ -1,10 +1,15 @@
 ---
 # This role contains common plays that will run on all nodes
 #
-- name: Install epel
+- name: Install common packages
   yum: name={{ item }} state=present
   with_items:
    - epel-release
+   - logwatch
+   - fail2ban
+   - vim
+   - debconf-utils
+
 
 - name: upgrade all packages
   yum:
@@ -39,3 +44,60 @@
     user: huke
     state: present
     key: "{{ lookup('file', '/home/huke/.ssh/id_rsa.pub') }}"
+
+- name: Set up Postfix to relay mail
+  debconf: name=postfix
+           question='{{ item.question }}'
+           value='{{ item.value }}'
+           vtype='{{ item.vtype }}'
+  with_items:
+    - { question: 'postfix/mailname', value: '{{ ansible_fqdn }}', vtype: 'string' }
+    - { question: 'postfix/main_mailer_type', value: 'Internet Site', vtype: 'string' }
+
+- name: Email log summary daily
+  lineinfile: dest=/etc/cron.daily/00logwatch
+              regexp="^/usr/sbin/logwatch"
+              line="/usr/sbin/logwatch --output mail --mailto {{ Service_mail }} --detail high"
+              state=present create=yes
+
+- name: RSAAuth
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^RSAAuthentication"
+              line="RSAAuthentication no"
+              state=present
+  notify: Restart ssh
+
+- name: Pub key auth
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^PubkeyAuthentication"
+              line="PubkeyAuthentication yes"
+              state=present
+  notify: Restart ssh
+
+- name: Disallow password authentication
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^PasswordAuthentication"
+              line="PasswordAuthentication yes"
+              state=present
+  notify: Restart ssh
+
+- name: UsePAM yes
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^UsePAM"
+              line="UsePAM yes"
+              state=present
+  notify: Restart ssh
+
+- name: ChallengeRespo
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^ChallengeResponseAuthentication"
+              line="ChallengeResponseAuthentication no"
+              state=present
+  notify: Restart ssh
+
+- name: Disallow root SSH access
+  lineinfile: dest=/etc/ssh/sshd_config
+              regexp="^PermitRootLogin"
+              line="PermitRootLogin no"
+              state=present
+  notify: Restart ssh
